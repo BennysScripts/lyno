@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import { config } from "dotenv";
+import { fileURLToPath } from "node:url";
 config({ path: ".env", quiet: true });
 export default defineConfig({
   test: {
@@ -8,5 +9,5 @@ export default defineConfig({
     hookTimeout: 30000,
     fileParallelism: false,
   },
-  resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
 });

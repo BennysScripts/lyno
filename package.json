@@ -12,6 +12,8 @@
     "test:e2e": "playwright test",
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "db:seed": "tsx --env-file=.env scripts/seed.ts",
+    "db:backup": "tsx scripts/database-tools.ts backup",
+    "db:restore": "tsx scripts/database-tools.ts restore",
     "jobs": "tsx --env-file=.env scripts/jobs.ts",
     "check": "npm run typecheck && npm test && npm run build",
     "mailbox": "tsx scripts/mailbox.ts",

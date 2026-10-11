@@ -8,3 +8,6 @@ playwright-report/
 *.tsbuildinfo
 .local/
 coverage/
+*.dump
+*.dump.*.json
+*.dump.json

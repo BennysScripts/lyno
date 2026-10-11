@@ -15,7 +15,7 @@ Es wurde kein produktives Deployment vorgenommen und keine rechtliche Freigabe e
 
 ## Noch separat zu prüfen
 
-- Unabhängige Sicherheitsprüfung, Last-/Ausfalltests und Wiederherstellung aus Backups.
+- Unabhängige Sicherheitsprüfung, Last-/Ausfalltests und Wiederherstellung vom vorgesehenen verschlüsselten externen Backup-Speicher. Lokaler PostgreSQL-Restore mit 35 Tabellen und RLS geprüft; kein Nachweis der späteren Infrastruktur oder RPO/RTO.
 - Echte Geräte einschließlich Safari/iOS und assistive Technologien; die enthaltenen Browserprüfungen verwenden Chromium.
 - E-Mail-Zustellbarkeit und gesamte externe Double-Opt-in-/Einladung-/Reset-Kette nach Konfiguration des Versandadapters.
 - Reale Providerfehler, Stripe-Testwebhook-Reihenfolge/-Wiederholung, Aboänderungen und Supportfälle.

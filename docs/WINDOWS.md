@@ -96,6 +96,15 @@ Die bestehende `.env` behalten, neue Beispielvariablen bei Bedarf ergänzen. Die
 
 ## Gebauten Stand und Tests prüfen
 
+Vor Änderungen können Sie die lokale Compose-Datenbank sichern und die Wiederherstellung in eine **neue** Datenbank prüfen:
+
+```powershell
+npm.cmd run db:backup -- .local/backups/vor-update.dump
+npm.cmd run db:restore -- .local/backups/vor-update.dump lyno_restore_pruefung_01
+```
+
+Immer einen neuen Datei- bzw. Datenbanknamen wählen. Vorhandene Ziele werden abgewiesen; `lyno` kann niemals Restore-Ziel dieses Werkzeugs sein. Der binäre Dump wird ohne PowerShell-Ausgabeumleitung geschrieben und erhält eine SHA-256-Metadatendatei. Beide Dateien zusammen aufbewahren. Ein Hash erkennt Beschädigung, verschlüsselt die Daten aber nicht. Für echte Firmendaten zusätzlich verschlüsselten Speicher und Windows-Dateiberechtigungen vorsehen. Globale PostgreSQL-Rollen, `.env` und lokales Postfach sind nicht Teil des Datenbank-Dumps. Die Werkzeuge verwenden den bereits eingerichteten Compose-Dienst `db` mit Benutzer/Datenbank `lyno`; eigene PostgreSQL-Installationen benötigen native PostgreSQL-Sicherungswerkzeuge.
+
 Statt Entwicklungsserver:
 
 ```powershell

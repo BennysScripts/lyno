@@ -1,8 +1,10 @@
 import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import fs from "node:fs/promises";
+import { existsSync } from "node:fs";
 const browser = await chromium.launch({
-  executablePath: "/usr/bin/chromium",
+  executablePath:
+    process.env.CHROMIUM_PATH ||
+    (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined),
   headless: true,
   args: ["--no-sandbox"],
 });

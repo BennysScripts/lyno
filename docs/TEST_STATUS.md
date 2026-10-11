@@ -2,16 +2,16 @@
 
 Stand: 11. Oktober 2026. Lokale Umgebung: Node.js 24.19, Next.js 16.4, PostgreSQL 17, Chromium.
 
-| Prüfung                                                  | Ergebnis                                                                                                |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| TypeScript strict inkl. ungenutzter Bezeichner           | Erfolgreich                                                                                             |
-| SQL-Migrationen, erneute Anwendung                       | Erfolgreich, keine doppelte Migration                                                                   |
-| Vitest Unit-/PostgreSQL-/Adaptertests                    | **47/47 erfolgreich**, einschließlich Pakete, Customization, Rabattkonkurrenz und Stripe-Adapter        |
-| Playwright Desktop, Tablet und Smartphone                | **24/24 erfolgreich**, finaler Standalone-Lauf nach Referenzabgleich und Kontrastkorrektur, 1,3 Minuten |
-| axe WCAG 2 A/AA: Website, Dashboard Light/Dark, Insights | Keine automatisiert erkannten Verstöße in den geprüften Ansichten                                       |
-| Next.js Produktionsbuild und Standalone-Paket            | Erfolgreich; `.env`- und Postfach-Ausschluss im finalen Paket geprüft                                   |
-| npm audit, Produktions- und Entwicklungsabhängigkeiten   | **0 bekannte Schwachstellen** zum Prüfzeitpunkt                                                         |
-| Formatierung und git diff --check                        | Erfolgreich                                                                                             |
+| Prüfung                                                  | Ergebnis                                                                                                        |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| TypeScript strict inkl. ungenutzter Bezeichner           | Erfolgreich                                                                                                     |
+| SQL-Migrationen, erneute Anwendung                       | Erfolgreich, keine doppelte Migration                                                                           |
+| Vitest Unit-/PostgreSQL-/Adaptertests                    | **50/50 erfolgreich**, einschließlich Pakete, Customization, Rabattkonkurrenz, Stripe-Adapter und Backup-Schutz |
+| Playwright Desktop, Tablet und Smartphone                | **24/24 erfolgreich**, finaler Standalone-Lauf nach Referenzabgleich und Kontrastkorrektur, 1,3 Minuten         |
+| axe WCAG 2 A/AA: Website, Dashboard Light/Dark, Insights | Keine automatisiert erkannten Verstöße in den geprüften Ansichten                                               |
+| Next.js Produktionsbuild und Standalone-Paket            | Erfolgreich; `.env`- und Postfach-Ausschluss im finalen Paket geprüft                                           |
+| npm audit, Produktions- und Entwicklungsabhängigkeiten   | **0 bekannte Schwachstellen** zum Prüfzeitpunkt                                                                 |
+| Formatierung und git diff --check                        | Erfolgreich                                                                                                     |
 
 ## Fachliche und Sicherheitsprüfungen
 
@@ -48,4 +48,12 @@ Screenshots: `docs/screenshots/`. Die abschließenden Browsertests verwenden den
 
 ## Grenzen der Aussage
 
-Automatisierte Zugänglichkeitsprüfungen ersetzen keinen Test mit assistiven Technologien. Keine Abnahme auf echtem Windows, Safari/iOS. Kein Last-, Penetrations- oder Backup-Restore-Test zum Stand dieser Übergabe. Die vorbereitete GitHub-CI wurde hier noch nicht remote ausgeführt. OpenAI, SMTP-Zustellbarkeit und Stripe-Checkout wurden ohne Zugangsdaten **nicht gegen externe Anbieter geprüft**. Providererfolg mit anschließendem DB-Ausfall und verlorene Ablaufwebhooks benötigen weitere Wiederanlauf-/Abgleichsprüfung. Keine externen E-Mails, echten Zahlungen, kostenpflichtigen KI-Aufrufe oder produktiven Deployments durchgeführt. Details und benötigte Angaben: `docs/LAUNCH.md`.
+Automatisierte Zugänglichkeitsprüfungen ersetzen keinen Test mit assistiven Technologien. Keine Abnahme auf echtem Windows, Safari/iOS. Kein Last- oder Penetrationstest; Backup-Restore lokal nachgewiesen, externer Speicher und RPO/RTO ungeprüft. Die vorbereitete GitHub-CI wurde hier noch nicht remote ausgeführt. OpenAI, SMTP-Zustellbarkeit und Stripe-Checkout wurden ohne Zugangsdaten **nicht gegen externe Anbieter geprüft**. Providererfolg mit anschließendem DB-Ausfall und verlorene Ablaufwebhooks benötigen weitere Wiederanlauf-/Abgleichsprüfung. Keine externen E-Mails, echten Zahlungen, kostenpflichtigen KI-Aufrufe oder produktiven Deployments durchgeführt. Details und benötigte Angaben: `docs/LAUNCH.md`.
+
+## Fortsetzung nach dem GitHub-Zwischenstand
+
+Commit 03f0b7e wurde von GitHub in ein unabhängiges Verzeichnis geklont. `npm ci`, alle acht Migrationen gegen eine neue PostgreSQL-17-Instanz, Seed, Typecheck, 47 Backendtests, Build, Standalone-Start, Browser-Anmeldung und autorisierter API-Zugriff erfolgreich. Dies prüft fehlende versionierte Dateien und Installationsabhängigkeiten; es ist weiterhin ein Linux-Test, keine Windows-Ausführung.
+
+Danach lokale `db:backup`-/`db:restore`-Werkzeuge ergänzt: binärer Datenstrom statt Shell-Ausgabeumleitung, exklusive Dateierstellung, SHA-256-Prüfung, Restore ausschließlich in neue Datenbanken mit kontrolliertem Namen. Tatsächlicher Dump und Restore gegen PostgreSQL erfolgreich. Inhalt/Fingerprints aller 35 Tabellen und Einstellungen aller 21 RLS-Tabellen stimmen überein. Anwendung ohne Tenant-Kontext sieht keine Aufgaben; mit gültigem Tenant-Kontext ist der Zugriff weiterhin möglich. Überschreiben vorhandener Datei/Datenbank, Restore in die Anwendungsdatenbank und beschädigte Sicherung abgewiesen. Drei zusätzliche automatisierte Schutztests erhöhen den Gesamtumfang auf 50. Dumps und Laufzeitdaten bleiben außerhalb von Git.
+
+Die Vitest-Pfadauflösung nutzt `fileURLToPath` statt URL-Pfadnamen, damit Windows-Laufwerksbuchstaben korrekt behandelt werden. Die manuelle Browserprüfung verwendet auf Windows den installierten Playwright-Browser. Der Frontend-Code wurde seit dem erfolgreichen Lauf der 24 Browserfälle nicht geändert.

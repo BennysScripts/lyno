@@ -91,6 +91,19 @@ pg_dump --format=custom --file=lyno-backup.dump "$BACKUP_DATABASE_URL"
 
 Wiederherstellung ausschließlich in eine neue, leere Prüfdatenbank testen. Kein automatisiertes Überschreiben vorhandener Instanzen. Mindestens ein vollständiger Restore-Test ist vor Launch erforderlich. Backup-Speicher gehört nicht ins Repository.
 
+Für die lokale Compose-Installation stehen plattformunabhängige Streaming-Werkzeuge bereit:
+
+```bash
+npm run db:backup -- .local/backups/vor-update.dump
+npm run db:restore -- .local/backups/vor-update.dump lyno_restore_pruefung_01
+```
+
+Das Backup erzeugt Datei und SHA-256-Metadaten exklusiv, ohne vorhandene Sicherungen zu überschreiben. Restore prüft den Hash und akzeptiert ausschließlich neue Namen mit Präfix `lyno_restore_`; `createdb` muss erfolgreich sein, bevor `pg_restore` in einer Transaktion läuft. Es gibt kein DROP und kein `--clean`. Bei Fehlern bleiben unvollständige Sicherungen bzw. neue Prüfdatenbanken zur Diagnose bestehen; die Anwendung wird nicht auf das Restore-Ziel umgeschaltet. Nur vertrauenswürdige eigene Dumps einspielen: PostgreSQL-Sicherungen enthalten ausführbare SQL-Definitionen, die Prüfsumme ist kein Herkunftsnachweis.
+
+Die Werkzeuge setzen den lokalen Dienst `db`, Datenbank/Administrator `lyno` und die bereits eingerichtete Rolle `lyno_app` voraus. Optional wählt `LYNO_DB_CONTAINER` einen ausdrücklich benannten lokalen Docker-Container statt Compose. Es werden keine DB-Passwörter als Prozessargumente übergeben. Die Dateiströme erhalten Binärdaten auch unter PowerShell. Dumps und JSON-Metadaten gehören zusammen, sind nicht verschlüsselt und werden von Git ausgeschlossen; auf Unix gilt Modus 0600, unter Windows gelten zusätzlich die Verzeichnis-ACLs. Rollen, Runtime-Geheimnisse und lokales Postfach müssen gesondert gesichert werden.
+
+Nach der GitHub-Übergabe wurde ein frischer Checkout in einer unabhängigen PostgreSQL-17-Instanz migriert, gesät, gebaut und mit 47 Backend-Prüfungen getestet. Ein anschließend erzeugter Dump wurde in eine neue Prüfdatenbank wiederhergestellt: Inhalt und Anzahl aller 35 Tabellen identisch; 21 RLS-Tabellen und erlaubte/verbotene App-Rollenzugriffe geprüft. Bestehende Ziele und beschädigte Sicherungen wurden abgewiesen. Dies ist ein lokaler Wiederherstellungsnachweis, keine Abnahme von externem Backup-Speicher, Verschlüsselung, RPO/RTO oder Katastrophenwiederanlauf.
+
 Die Anwendung löscht bestätigte Unternehmensdaten per Tenant-Cascade. Kontoentfernung entfernt Identität, Sessions und Mitgliedschaften; bei Unternehmenslöschung kann die eigene letzte Identität durch eine gesonderte Checkbox ebenfalls gelöscht werden. Ohne dieses Opt-in bleibt ein erneutes Firmen-Onboarding nach Login möglich; frühere Inhalte verlieren ihre Autorenzuordnung. Lokales Postfach und Backups sind separate Speicher und benötigen ein festgelegtes Lösch-/Aufbewahrungskonzept. Die Double-Opt-in-Liste und Kontaktanfragen sind globale Vertriebsdaten; vor produktivem Vertrieb ist ein juristisch abgestimmter administrativer Auskunfts-/Löschprozess erforderlich.
 
 ## Beobachtbarkeit und Grenzen
