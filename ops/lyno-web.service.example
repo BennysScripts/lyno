@@ -1,0 +1,21 @@
+[Unit]
+Description=LYNO Web
+After=network-online.target
+
+[Service]
+Type=simple
+User=lyno
+WorkingDirectory=/srv/lyno
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+EnvironmentFile=/etc/lyno/web.env
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/srv/lyno/.next /srv/lyno/.local
+
+[Install]
+WantedBy=multi-user.target

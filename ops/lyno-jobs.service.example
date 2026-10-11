@@ -1,0 +1,11 @@
+[Unit]
+Description=LYNO background jobs
+
+[Service]
+Type=oneshot
+User=lyno
+WorkingDirectory=/srv/lyno
+EnvironmentFile=/etc/lyno/web.env
+ExecStart=/usr/bin/node --import tsx scripts/jobs.ts
+NoNewPrivileges=true
+PrivateTmp=true
