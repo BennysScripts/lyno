@@ -139,7 +139,9 @@ export async function learningPaths(db: DB, ctx: Context) {
     .map((p) => ({
       ...p,
       completedIds: progress
-        .filter((r) => r.path_id === p.id)
+        .filter(
+          (r) => r.path_id === p.id && p.article_ids.includes(r.article_id),
+        )
         .map((r) => r.article_id),
     }));
 }
@@ -152,6 +154,7 @@ export async function saveLearningPath(db: DB, ctx: Context, input: unknown) {
       id: uuid.optional(),
       title: z.string().trim().min(2).max(120),
       description: z.string().max(1000).default(""),
+      confirmProgressReset: z.boolean().default(false),
       articleIds: z
         .array(uuid)
         .min(1)
@@ -162,6 +165,35 @@ export async function saveLearningPath(db: DB, ctx: Context, input: unknown) {
   const allowed = new Set((await readableArticles(db, ctx)).map((a) => a.id));
   if (d.articleIds.some((id) => !allowed.has(id)))
     throw new AppError(404, "Ein Artikel ist nicht zugänglich.");
+  let progressReset = false;
+  if (d.id) {
+    const [previous] = await rows(
+      db,
+      "SELECT article_ids FROM learning_paths WHERE tenant_id=$1 AND id=$2 FOR UPDATE",
+      [ctx.tenantId, d.id],
+    );
+    if (!previous) throw new AppError(404, "Lernpfad nicht gefunden.");
+    const old = previous.article_ids as string[];
+    if (JSON.stringify(old) !== JSON.stringify(d.articleIds)) {
+      if (!d.confirmProgressReset)
+        throw new AppError(
+          409,
+          "Bitte bestätigen Sie die Anpassung des Lernfortschritts bei geänderter Schrittfolge.",
+        );
+      let prefix = 0;
+      while (
+        prefix < old.length &&
+        prefix < d.articleIds.length &&
+        old[prefix] === d.articleIds[prefix]
+      )
+        prefix++;
+      await db.query(
+        "DELETE FROM learning_progress WHERE tenant_id=$1 AND path_id=$2 AND NOT(article_id=ANY($3::uuid[]))",
+        [ctx.tenantId, d.id, old.slice(0, prefix)],
+      );
+      progressReset = true;
+    }
+  }
   const [path] = d.id
     ? await rows(
         db,
@@ -174,7 +206,7 @@ export async function saveLearningPath(db: DB, ctx: Context, input: unknown) {
         [ctx.tenantId, d.title, d.description, d.articleIds],
       );
   if (!path) throw new AppError(404, "Lernpfad nicht gefunden.");
-  await audit(db, ctx, "learning_path.saved", path.id);
+  await audit(db, ctx, "learning_path.saved", path.id, { progressReset });
   return path;
 }
 export async function completeLearning(db: DB, ctx: Context, input: unknown) {

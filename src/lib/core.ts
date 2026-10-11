@@ -226,10 +226,34 @@ export async function teamAction(db: DB, ctx: Context, input: unknown) {
   requireRole(ctx, ["owner", "admin"]);
   const d = z
     .object({
+      id: uuid.optional(),
       name: z.string().trim().min(2).max(80),
       userIds: z.array(uuid).max(100).default([]),
     })
     .parse(input);
+  await db.query("SELECT id FROM organizations WHERE id=$1 FOR UPDATE", [
+    ctx.tenantId,
+  ]);
+  if (
+    d.id &&
+    !(
+      await rows(db, "SELECT id FROM teams WHERE tenant_id=$1 AND id=$2", [
+        ctx.tenantId,
+        d.id,
+      ])
+    ).length
+  )
+    throw new AppError(404, "Team nicht gefunden.");
+  if (
+    (
+      await rows(
+        db,
+        "SELECT id FROM teams WHERE tenant_id=$1 AND name=$2 AND id IS DISTINCT FROM $3::uuid",
+        [ctx.tenantId, d.name, d.id || null],
+      )
+    ).length
+  )
+    throw new AppError(409, "Ein Team mit diesem Namen besteht bereits.");
   for (const id of d.userIds)
     if (
       !(
@@ -241,11 +265,17 @@ export async function teamAction(db: DB, ctx: Context, input: unknown) {
       ).length
     )
       throw new AppError(400, "Person gehört nicht zum Unternehmen.");
-  const [team] = await rows(
-    db,
-    "INSERT INTO teams(tenant_id,name) VALUES($1,$2) ON CONFLICT(tenant_id,name) DO UPDATE SET name=excluded.name RETURNING *",
-    [ctx.tenantId, d.name],
-  );
+  const [team] = d.id
+    ? await rows(
+        db,
+        "UPDATE teams SET name=$3 WHERE tenant_id=$1 AND id=$2 RETURNING *",
+        [ctx.tenantId, d.id, d.name],
+      )
+    : await rows(
+        db,
+        "INSERT INTO teams(tenant_id,name) VALUES($1,$2) RETURNING *",
+        [ctx.tenantId, d.name],
+      );
   await db.query("DELETE FROM team_members WHERE tenant_id=$1 AND team_id=$2", [
     ctx.tenantId,
     team.id,
@@ -332,6 +362,24 @@ export async function deleteCompany(db: DB, ctx: Context, input: unknown) {
   if (!(await bcrypt.compare(d.password, u.password_hash)))
     throw new AppError(403, "Passwort ist nicht korrekt.");
   // Cascades are scoped to this organization. Identity deletion needs a separate opt-in.
+  if (org.stripe_subscription_id && org.subscription_status !== "canceled")
+    throw new AppError(
+      409,
+      "Beenden Sie zuerst Ihr Stripe-Testabo und warten Sie auf die bestätigte Beendigung. Eine Firmenlöschung darf kein laufendes Abo zurücklassen.",
+    );
+  if (
+    (
+      await rows(
+        db,
+        "SELECT 1 FROM checkout_orders WHERE tenant_id=$1 AND provider='stripe_test' AND status='pending' UNION ALL SELECT 1 FROM billing_operations WHERE tenant_id=$1 AND status<>'succeeded'",
+        [ctx.tenantId],
+      )
+    ).length
+  )
+    throw new AppError(
+      409,
+      "Gleichen Sie zuerst offene Stripe-Testbestellungen und Abrechnungsaufträge ab. Danach kann das Unternehmen gelöscht werden.",
+    );
   if (
     d.deletePersonalAccount &&
     (

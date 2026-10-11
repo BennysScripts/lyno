@@ -17,7 +17,42 @@ import type { Article } from "@/lib/types";
 import { useApp } from "./app-context";
 import { ActionForm, Badge, Button, date, Empty, Field, Modal } from "./ui";
 export function Academy() {
-  const { data, manage, write, mutate, run, start } = useApp();
+  const { data, manage, mutate, start, toast } = useApp();
+  const [pendingCheckpoints, setPendingCheckpoints] = useState<
+    Record<string, boolean>
+  >({});
+  async function toggleCheckpoint(id: string, done: boolean) {
+    setPendingCheckpoints((current) => ({ ...current, [id]: done }));
+    try {
+      await mutate(
+        "checklist/toggle",
+        { id, done },
+        "POST",
+        "Fortschritt aktualisiert.",
+      );
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : "Fortschritt konnte nicht gespeichert werden.",
+        true,
+      );
+    } finally {
+      setPendingCheckpoints((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+    }
+  }
+  const canComplete =
+    data.me.role !== "viewer" &&
+    data.access.active &&
+    data.permissions.includes("academy.read");
+  const canStartFlow =
+    data.me.role !== "viewer" &&
+    data.access.active &&
+    data.permissions.includes("flow.write");
   const params = useSearchParams();
   const [tab, setTab] = useState(
     params.get("tab") === "checklist" ? "checklist" : "articles",
@@ -230,16 +265,10 @@ export function Academy() {
                 <input
                   type="checkbox"
                   aria-label={`${i.title} als ${i.completed_at ? "offen" : "erledigt"} markieren`}
-                  checked={!!i.completed_at}
-                  disabled={!write}
-                  onChange={(e) =>
-                    run(
-                      "checklist/toggle",
-                      { id: i.id, done: e.target.checked },
-                      "POST",
-                      "Fortschritt aktualisiert.",
-                    )
-                  }
+                  checked={pendingCheckpoints[i.id] ?? !!i.completed_at}
+                  disabled={!canComplete || i.id in pendingCheckpoints}
+                  aria-busy={i.id in pendingCheckpoints}
+                  onChange={(e) => toggleCheckpoint(i.id, e.target.checked)}
                 />
                 <div>
                   <strong>{i.title}</strong>
@@ -257,19 +286,21 @@ export function Academy() {
                     Lesen <ArrowUpRight size={13} />
                   </Link>
                 )}
-                {i.template_id && write && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      const t = data.templates.find(
-                        (t) => t.id === i.template_id,
-                      );
-                      if (t) start(t);
-                    }}
-                  >
-                    Ablauf starten
-                  </Button>
-                )}
+                {i.template_id &&
+                  canStartFlow &&
+                  data.templates.some((t) => t.id === i.template_id) && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        const t = data.templates.find(
+                          (t) => t.id === i.template_id,
+                        );
+                        if (t) start(t);
+                      }}
+                    >
+                      Ablauf starten
+                    </Button>
+                  )}
               </div>
             ))
           ) : (

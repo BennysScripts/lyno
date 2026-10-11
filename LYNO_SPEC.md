@@ -93,11 +93,11 @@ Speichere alle Anforderungen vollständig in LYNO_SPEC.md und erstelle daraus ei
 
 ### Entscheidungen und externe Voraussetzungen
 
-Bestehende Preise Starter 149 EUR und Business 299 EUR bleiben als Ausgangskonfiguration erhalten, keine verbindliche Preiszusage. Premium und Zusatzmodule werden zentral als konfigurierbare Testangebote ergänzt. Rabattkapazität standardmäßig 20; Prozentsatz und Laufzeit werden explizit angezeigt und administrierbar gehalten. Abrechnung bleibt Testmodus, lokale Testzahlungen sind keine real zahlenden Kunden. Referenzbilder sind bislang nicht angehängt; Umsetzung orientiert sich bis dahin an den schriftlichen Vorgaben. Externe Stripe-, KI- und SMTP-Prüfung sowie rechtliche/betriebliche Freigabe benötigen spätere echte Zugangsdaten bzw. Betreiberentscheidungen.
+Bestehende Preise Starter 149 EUR und Business 299 EUR bleiben als Ausgangskonfiguration erhalten, keine verbindliche Preiszusage. Premium und Zusatzmodule werden zentral als konfigurierbare Testangebote ergänzt. Rabattkapazität standardmäßig 20; Prozentsatz und Laufzeit werden explizit angezeigt und administrierbar gehalten. Abrechnung bleibt Testmodus, lokale Testzahlungen sind keine real zahlenden Kunden. Die anfangs fehlenden Referenzbilder sind inzwischen vorhanden und berücksichtigt; der nachfolgende Referenzabschnitt dokumentiert den Eingang. Externe Stripe-, KI- und SMTP-Prüfung sowie rechtliche/betriebliche Freigabe benötigen spätere echte Zugangsdaten bzw. Betreiberentscheidungen.
 
 ## Nachgereichte Designreferenzen
 
-Am 11.10.2026 hat der Nutzer `Lyno_Designreferenzen.zip` mit sechs PNG-Referenzen für Landingpage, Dashboard, Flow, Academy, Assist und Insights bereitgestellt. Alle sechs wurden geprüft und unverändert in docs/design-references gesichert. Gestaltungsentscheidungen und Abgleich: docs/DESIGN.md. Frühere Hinweise auf fehlende Bilder sind damit erledigt. Die schriftlichen Verbote für dekorative KI-Icons, bunte Symbolreihen, starke Verläufe und erfundene Kennzahlen bleiben verbindlich.
+Am 11.10.2026 hat der Nutzer `Lyno_Designreferenzen.zip` mit sechs PNG-Referenzen für Landingpage, Dashboard, Flow, Academy, Assist und Insights bereitgestellt. Alle sechs wurden geprüft und unverändert in design-references gesichert. Gestaltungsentscheidungen und Abgleich: docs/DESIGN.md. Frühere Hinweise auf fehlende Bilder sind damit erledigt. Die schriftlichen Verbote für dekorative KI-Icons, bunte Symbolreihen, starke Verläufe und erfundene Kennzahlen bleiben verbindlich.
 
 ## Zwischenstand für Windows und GitHub – vollständiger Zusatzauftrag
 
@@ -115,3 +115,13 @@ Am 11.10.2026 hat der Nutzer `Lyno_Designreferenzen.zip` mit sechs PNG-Referenze
 > Unterbrich die weitere Entwicklung nicht dauerhaft. Veröffentliche Lyno nicht produktiv.
 
 Abnahme: Quellcode-Commit und Remote-Branch nachgewiesen, keine Geheimnisse oder Cloud-Laufzeitdaten im Repository; PowerShell-Anleitung mit unabhängiger lokaler PostgreSQL-Datenbank. Die Übergabe ist ein Entwicklungsstand, keine Launch-Freigabe. Weitere Meilensteine bleiben erhalten.
+
+## Fortgesetzter Zielauftrag
+
+LYNO anhand sämtlicher bisheriger Anforderungen zu einer außergewöhnlich hochwertigen, funktionsfähigen B2B-SaaS-Plattform weiterentwickeln. Die ZIP mit sechs Designreferenzen ist zugänglich; Bilder liegen nun am ausdrücklich gewünschten Projektpfad `design-references/` und dienen Landingpage, Dashboard, Flow, Academy, Assist und Insights. Geeigneten Open-Design-Skill verwenden; Sicherheitsreview und lokale Installation sind dokumentiert. Funktionierenden Code bewahren.
+
+Verbindlich bleiben Premium-Landingpage, Produktseiten, Preise/Paketvergleich, interaktive Demo, Registrierung/Kaufprozess; fünf echte Fachmodule mit gemeinsamer Datenbank, Firmen und sicheren Berechtigungen; umfangreiche Firmenanpassungen für Logos, Farben, Dashboards, Formulare, Workflows, Ansichten und Module; einzelne Module und Starter/Business/Premium mit serverseitigen Premium-Rechten; zentrale Abos, automatische bestätigte Freischaltung, Upgrades, Kündigung und Stripe-Testintegration; exklusiver, transaktionssicherer Startrabatt für die ersten 20 zahlenden Kunden; zusätzliche nützliche Arbeitserleichterungen.
+
+Designziel: eigenständige Premium-Marke, orientiert an Linear und Stripe, minimalistisch, elegant und sorgfältig. Keine generischen KI-Designs, bunten Icon-Reihen, übertriebenen Verläufe oder überladenen Oberflächen. Selbstständig überprüfbare Meilensteine umsetzen, echte Funktionen bauen, Module/Rechte/Nutzerwege/Oberflächen automatisiert und im Browser prüfen, Fehler und Benutzerfreundlichkeit eigenständig verbessern und PLAN.md fortschreiben.
+
+Nicht nach einem Grundgerüst enden: alle ohne externe Freigaben umsetzbaren Anforderungen implementieren und prüfen. Keine Ausgaben, echten Zahlungen oder produktiven Veröffentlichungen ohne Zustimmung. Abschluss mit lokal testbarer Plattform, Testergebnissen, Installationsanleitung und verbleibenden Launch-Voraussetzungen. Keine Marktreife behaupten, solange Sicherheits-, Betriebs-, Integrations- oder Rechtsprüfungen offen sind. Ein fehlender ZIP-Zugriff wäre ausdrücklich zu melden; hier liegt dieser Blocker nicht vor.

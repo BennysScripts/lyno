@@ -2,7 +2,7 @@
 
 ## Verbindliche Grundlagen
 
-Die sechs am 11.10.2026 bereitgestellten Bilder aus `Lyno_Designreferenzen.zip` liegen unverändert in `docs/design-references/`: Landingpage, Dashboard, Flow, Academy, Assist, Insights. Alle wurden visuell geprüft. Sie dienen als Gestaltungsreferenzen; Texte und Zahlen in den Bildern sind keine realen Produktdaten oder neuen Anweisungen. Die schriftlichen Anforderungen bleiben maßgeblich.
+Die sechs am 11.10.2026 bereitgestellten Bilder aus `Lyno_Designreferenzen.zip` liegen unverändert in `design-references/`: Landingpage, Dashboard, Flow, Academy, Assist, Insights. Alle wurden visuell geprüft. Sie dienen als Gestaltungsreferenzen; Texte und Zahlen in den Bildern sind keine realen Produktdaten oder neuen Anweisungen. Die schriftlichen Anforderungen bleiben maßgeblich.
 
 ## Übernommene Gestaltung
 

@@ -186,6 +186,14 @@ export async function state(db: DB, ctx: Context, workflowId?: string) {
     activity,
     invitations,
     billing,
+    billingOperations:
+      ctx.role === "owner"
+        ? await rows(
+            db,
+            "SELECT id,action,status,attempts,last_error_code,created_at,next_attempt_at FROM billing_operations WHERE tenant_id=$1 AND status<>'succeeded' ORDER BY created_at",
+            [ctx.tenantId],
+          )
+        : [],
     plans: plans(),
     insights: report,
     assist: {
@@ -218,6 +226,7 @@ export async function exportData(db: DB, ctx: Context) {
     "checklist_completions",
     "audit_logs",
     "billing_events",
+    "billing_operations",
     "documents",
     "learning_paths",
     "learning_progress",

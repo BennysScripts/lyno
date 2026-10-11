@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
       "./.local/**/*",
       "./.env*",
       "./docs/**/*",
+      "./design-references/**/*",
       "./tests/**/*",
       "./scripts/**/*",
     ],

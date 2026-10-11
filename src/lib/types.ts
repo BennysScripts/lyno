@@ -183,6 +183,15 @@ export type AppData = {
     amount_cents: number;
     created_at: string;
   }[];
+  billingOperations: {
+    id: string;
+    action: string;
+    status: "pending" | "processing" | "attention";
+    attempts: number;
+    last_error_code: string | null;
+    created_at: string;
+    next_attempt_at: string;
+  }[];
   plans: {
     id: string;
     name: string;

@@ -128,6 +128,7 @@ export function Workspace({
   }, [data.settings.branding.accent]);
   const manage =
       ["owner", "admin", "manager"].includes(data.me.role) &&
+      entitled &&
       (!moduleView ||
         !["flow", "academy"].includes(moduleView) ||
         data.permissions.includes(`${moduleView}.write` as Permission)),

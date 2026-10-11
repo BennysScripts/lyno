@@ -15,12 +15,12 @@ Es wurde kein produktives Deployment vorgenommen und keine rechtliche Freigabe e
 
 ## Noch separat zu prüfen
 
-- Unabhängige Sicherheitsprüfung, Last-/Ausfalltests und Wiederherstellung vom vorgesehenen verschlüsselten externen Backup-Speicher. Lokaler PostgreSQL-Restore mit 35 Tabellen und RLS geprüft; kein Nachweis der späteren Infrastruktur oder RPO/RTO.
+- Unabhängige Sicherheitsprüfung, Last-/Ausfalltests und Wiederherstellung vom vorgesehenen verschlüsselten externen Backup-Speicher. Lokaler PostgreSQL-Restore mit 36 Tabellen und 22 RLS-Tabellen geprüft; kein Nachweis der späteren Infrastruktur oder RPO/RTO.
 - Echte Geräte einschließlich Safari/iOS und assistive Technologien; die enthaltenen Browserprüfungen verwenden Chromium.
 - E-Mail-Zustellbarkeit und gesamte externe Double-Opt-in-/Einladung-/Reset-Kette nach Konfiguration des Versandadapters.
 - Reale Providerfehler, Stripe-Testwebhook-Reihenfolge/-Wiederholung, Aboänderungen und Supportfälle.
 - Preisfreigabe, Vertragsabschluss, Einwilligungswiderruf und administrative Bearbeitung öffentlicher Vertriebsdaten.
-- Wiederanlauf nach Providererfolg und DB-Fehler, Abgleich offener Stripe-Bestellungen und verlorener Ablaufwebhooks; blockierte Rabattplätze kontrolliert freigeben. Lokale Signatur-/Adaptertests ersetzen diese Ausfallprüfung nicht.
+- Den implementierten Wiederanlauf nach Providererfolg/DB-Fehler, Abgleich offener Stripe-Bestellungen und verlorener Ablaufwebhooks gegen ein echtes Stripe-Testkonto prüfen; Betreiberablauf für Fälle nach dem 22-Stunden-Wiederholungsfenster abnehmen. Lokale Signatur-, Konkurrenz- und Ausfalltests sind erfolgreich, ersetzen aber diese externe Prüfung nicht.
 - Malware-Scanning für Dokumente; PDF-Download ist implementiert, automatische PDF-Auswertung/OCR nicht. Pseudonymes Käuferregister, Testpostfach und Backups brauchen ein abgestimmtes Aufbewahrungs-/Löschkonzept.
 - Tatsächlicher Windows-/Docker-Desktop-Test der vorbereiteten PowerShell-Anleitung. Lokale Ausführung bisher unter Linux nachgewiesen.
 

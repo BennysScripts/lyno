@@ -45,7 +45,7 @@ Bestätigungen, Einladungen und Passwortreset-Links liegen unter `.local/mail/*.
 npm run jobs
 ```
 
-Den Befehl im späteren Betrieb regelmäßig, z. B. jede Minute, ausführen. Er startet fällige Wiederholungen, erzeugt In-App-Erinnerungen und verarbeitet lokale Abo-Laufzeiten. PostgreSQL-Sperren und eindeutige Erinnerungsschlüssel verhindern Doppelverarbeitung. Pflichtfelder wiederkehrender Vorlagen benötigen Standardwerte. Nach einer Betriebspause wird ein versäumter Wiederholungstermin nachgeholt, nicht eine ganze Serie historischer Vorgänge.
+Den Befehl im späteren Betrieb regelmäßig, z. B. jede Minute, ausführen. Er startet fällige Wiederholungen, erzeugt In-App-Erinnerungen, verarbeitet lokale Abo-Laufzeiten sowie offene Stripe-Testaufträge und gleicht deren Zahlungsstatus ab, sofern ein Testzugang konfiguriert ist. PostgreSQL-Sperren und eindeutige Erinnerungsschlüssel verhindern Doppelverarbeitung. Pflichtfelder wiederkehrender Vorlagen benötigen Standardwerte. Nach einer Betriebspause wird ein versäumter Wiederholungstermin nachgeholt, nicht eine ganze Serie historischer Vorgänge.
 
 ## Prüfungen
 
@@ -56,7 +56,9 @@ npm run build
 npm run test:e2e
 ```
 
-Integrationstests brauchen die migrierte lokale Datenbank und beide Verbindungsrollen aus `.env`. Sie legen eigene, zufällig benannte Testfirmen an; der Integrationstest entfernt ausschließlich seine eigenen Fixtures. E2E-Tests erzeugen zusätzliche klar erkennbare Testfirmen. **Niemals gegen eine Produktionsdatenbank ausführen.**
+`npm test` und `npm run test:e2e` erzeugen jeweils eine eigene zufällig benannte PostgreSQL-Datenbank, wenden alle Migrationen an und entfernen ausschließlich diese Testdatenbank anschließend. E2E erhält automatisch Beispieldaten. Die vorhandene Anwendungsdatenbank, deren Rate-Limits, Rabattplätze und das lokale Postfach bleiben unberührt. Voraussetzung: lokale PostgreSQL-Instanz, einmal ausgeführtes `db:migrate` für die Anwendungsrolle und beide Verbindungsrollen aus `.env`; der Migrationsbenutzer benötigt `CREATEDB`. Externe Hosts werden abgewiesen. Versand, KI und Abrechnung werden für Tests auf lokalen Testbetrieb gesetzt. Vitest/Playwright über diese npm-Befehle aufrufen, nicht direkt.
+
+Vor E2E den eigenen Webserver stoppen: Playwright startet einen eigenen Dienst auf Port 3000 und übernimmt keinen laufenden Dienst. Für den gebauten Stand `E2E_PRODUCTION=1` setzen (PowerShell-Befehle in der Windows-Anleitung). Optional erhält `LYNO_KEEP_TEST_DATABASE=true` ausschließlich die neue Prüfdatenbank und deren Testpostfach zur Diagnose. **Niemals Produktionszugänge in einer Testumgebung konfigurieren.**
 
 Playwright verwendet auf dieser Umgebung `/usr/bin/chromium`. Auf anderen Rechnern entweder `CHROMIUM_PATH` auf einen installierten Chromium-Browser setzen oder `npx playwright install chromium` ausführen. Ohne System-Chromium verwendet die Konfiguration automatisch den Playwright-Browser. Mobile Tests verwenden einen Chromium-Browser mit Smartphone-Viewport und Touch-Eingabe, kein echtes iOS/Safari-Gerät.
 
@@ -81,6 +83,8 @@ npm start
 - `tests/`: Unit-, reale PostgreSQL-Integrations- und Playwright-E2E-Tests.
 - `.github/workflows/quality.yml`: vorbereitete CI mit PostgreSQL, Build und Browserprüfung (hier nicht auf GitHub ausgeführt).
 - `LYNO_SPEC.md`, `PLAN.md`, `AGENTS.md`: Spezifikation, Meilensteine und Arbeitsregeln.
+
+Funktionsnachweise: [Abnahmematrix](docs/FEATURE_MATRIX.md).
 
 Details: [Architektur](docs/ARCHITECTURE.md), [Betrieb](docs/OPERATIONS.md), [Launch-Vorbereitung](docs/LAUNCH.md).
 

@@ -9,7 +9,7 @@
 - Nach abgeschlossenen Meilensteinen PLAN.md und docs/TEST_STATUS.md aktualisieren.
 - Tests für Autorisierung und Mandantentrennung sind Abnahmekriterien. Vor Abschluss Typecheck, Integrationstests, Build und E2E ausführen.
 - Keine erfundenen Kunden, Kennzahlen, Rechtstexte oder Anbieterangaben. Seed-Inhalte ausdrücklich als Beispieldaten markieren.
-- Bestehende Nutzerdaten niemals löschen. Tests verwenden eigene Testfirmen; Kontolöschung nur per ausdrücklich bestätigter UI-Aktion.
+- Bestehende Nutzerdaten niemals löschen. Tests über `npm test` / `npm run test:e2e` verwenden eigene temporäre Datenbanken und Postfächer; keine Rate-Limits oder Rabattplätze in Arbeitsdatenbanken zurücksetzen; Kontolöschung nur per ausdrücklich bestätigter UI-Aktion.
 
 ## Design-Skill
 
@@ -20,6 +20,7 @@ Bei Oberflächenarbeit den lokal geprüften Skill `.agents/skills/open-design-fr
 - LYNO_SPEC.md enthält den vollständigen Auftrag; keine Features oder Preisstrategien stillschweigend streichen. PLAN.md bildet Abnahmen und offene Punkte ab.
 - Bestehenden Code gezielt erweitern. Zentrale Produktkonfiguration ist einzige Quelle für Preise, Pakete, Module und Limits. Modulrechte immer serverseitig prüfen.
 - CORE ist Basis. Starter/Business/Premium sowie einzeln buchbare Zusatzmodule/Bundles unterstützen. Stripe strikt Testmodus; Zahlungsevents signiert und idempotent, Rechte erst nach Zahlungsbestätigung.
+- Stripe-Schreibaufrufe erst nach Commit des dauerhaften Auftrags ausführen; unveränderliche Parameter/Idempotenzschlüssel, begrenztes Wiederholungsfenster und kanonischen Abgleich erhalten.
 - Rabattplätze in PostgreSQL transaktionssicher reservieren/einlösen; Testzahlungen niemals als echte Kunden bewerben.
 - Individualisierung, Rollen und Dokumente gehören immer zu einer Firma. Benutzerdefinierte Rollen dürfen keine höheren Rechte erzeugen.
 - Design: klare Typografie, ruhige neutrale Flächen, dezente Akzente/Animationen; keine KI-Sternchen, dekorativen Symbolreihen, starken Verläufe oder überladenen Dashboards. Referenzbilder nicht erfinden.

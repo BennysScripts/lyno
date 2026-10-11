@@ -215,8 +215,12 @@ export function TeamView() {
                   .join(", ") || "Noch keine Mitglieder"}
               </p>
               {admin && (
-                <Button variant="secondary" onClick={() => setTeam(t)}>
-                  Mitglieder bearbeiten
+                <Button
+                  variant="secondary"
+                  aria-label={`Team bearbeiten: ${t.name}`}
+                  onClick={() => setTeam(t)}
+                >
+                  Team bearbeiten
                 </Button>
               )}
             </article>
@@ -376,13 +380,14 @@ function TeamEditor({
   const { data, mutate } = useApp();
   return (
     <Modal
-      title={team ? "Teammitglieder bearbeiten" : "Ein Team erstellen"}
+      title={team ? "Team bearbeiten" : "Ein Team erstellen"}
       onClose={onClose}
     >
       <ActionForm
         onSubmit={async (fd) => {
           await mutate("teams", {
-            name: team?.name || fd.get("name"),
+            id: team?.id,
+            name: fd.get("name"),
             userIds: fd.getAll("members"),
           });
           onClose();
@@ -395,7 +400,6 @@ function TeamEditor({
             minLength={2}
             maxLength={80}
             defaultValue={team?.name}
-            readOnly={!!team}
           />
         </Field>
         <div className="team-checkboxes">

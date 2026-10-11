@@ -1,3 +1,8 @@
+import path from "node:path";
+const mailboxDirectory = path.join(
+  process.env.LYNO_DATA_DIR || ".local",
+  "mail",
+);
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readdir, readFile } from "node:fs/promises";
@@ -51,8 +56,10 @@ test("Firmenanpassung, Suche, Dokumente, Lernpfade, Ansichten und Berichte", asy
   });
   expect(r.status()).toBe(200);
   let raw = "";
-  for (const file of (await readdir(".local/mail")).sort().reverse()) {
-    const m = JSON.parse(await readFile(`.local/mail/${file}`, "utf8"));
+  for (const file of (await readdir(mailboxDirectory)).sort().reverse()) {
+    const m = JSON.parse(
+      await readFile(path.join(mailboxDirectory, file), "utf8"),
+    );
     if (m.to === email) {
       raw = new URL(m.text).searchParams.get("token")!;
       break;
@@ -113,6 +120,37 @@ test("Firmenanpassung, Suche, Dokumente, Lernpfade, Ansichten und Berichte", asy
   await modal.getByRole("button", { name: "Lernpfad speichern" }).click();
   await page.getByRole("button", { name: "Als gelernt markieren" }).click();
   await expect(page.getByText("1 von 1 Schritten abgeschlossen")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Lernpfad bearbeiten: Einstieg Projektteam" })
+    .click();
+  await modal
+    .getByLabel("Titel", { exact: true })
+    .fill("Einstieg und Orientierung");
+  await modal.getByRole("button", { name: "Lernpfad speichern" }).click();
+  await expect(page.getByText("1 von 1 Schritten abgeschlossen")).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Lernpfad bearbeiten: Einstieg und Orientierung",
+    })
+    .click();
+  await modal
+    .getByLabel("Artikel hinzufügen")
+    .selectOption({ label: "Willkommen in Ihrem Arbeitsraum" });
+  await modal.getByRole("checkbox").check();
+  await modal.getByRole("button", { name: "Lernpfad speichern" }).click();
+  await expect(page.getByText("1 von 2 Schritten abgeschlossen")).toBeVisible();
+  await page.getByRole("button", { name: "Als gelernt markieren" }).click();
+  await expect(page.getByText("2 von 2 Schritten abgeschlossen")).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Lernpfad bearbeiten: Einstieg und Orientierung",
+    })
+    .click();
+  await modal.getByRole("button", { name: "Artikel 2 nach oben" }).click();
+  await expect(modal.getByRole("checkbox")).not.toBeChecked();
+  await modal.getByRole("checkbox").check();
+  await modal.getByRole("button", { name: "Lernpfad speichern" }).click();
+  await expect(page.getByText("0 von 2 Schritten abgeschlossen")).toBeVisible();
   await page.getByRole("button", { name: "Global suchen" }).click();
   await modal.getByLabel("Suchbegriff").fill("Projektwissen");
   await modal.getByRole("button", { name: "Suchen", exact: true }).click();
@@ -147,6 +185,39 @@ test("Firmenanpassung, Suche, Dokumente, Lernpfade, Ansichten und Berichte", asy
   await modal.getByLabel("Wissen lesen", { exact: true }).check();
   await modal.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.getByText("Wissensleser", { exact: true })).toHaveCount(2);
+  await page.goto("/app/team");
+  await page.getByRole("button", { name: /^Teams / }).click();
+  await page
+    .getByRole("button", { name: "Team erstellen", exact: true })
+    .click();
+  await modal.getByLabel("Teamname").fill("Delivery");
+  await modal.getByRole("checkbox", { name: /Robin Erweiterung/ }).check();
+  await modal.getByRole("button", { name: "Speichern", exact: true }).click();
+  await page.getByRole("button", { name: "Team bearbeiten: Delivery" }).click();
+  await expect(
+    modal.getByRole("checkbox", { name: /Robin Erweiterung/ }),
+  ).toBeChecked();
+  await modal.getByLabel("Teamname").fill("Projektteam");
+  await modal.getByRole("button", { name: "Speichern", exact: true }).click();
+  await page.reload();
+  await page.getByRole("button", { name: /^Teams / }).click();
+  await expect(
+    page.getByRole("heading", { name: "Projektteam", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Team erstellen", exact: true })
+    .click();
+  await modal.getByLabel("Teamname").fill("Projektteam");
+  await modal.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(modal.getByRole("alert")).toContainText("besteht bereits");
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("button", { name: "Team bearbeiten: Projektteam" })
+    .click();
+  await expect(
+    modal.getByRole("checkbox", { name: /Robin Erweiterung/ }),
+  ).toBeChecked();
+  await page.keyboard.press("Escape");
   for (const path of ["/app/learning", "/app/settings?tab=billing"]) {
     await page.goto(path);
     expect(

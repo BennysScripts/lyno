@@ -3,10 +3,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { useApp } from "./app-context";
 import { ActionForm, Button, Empty, Field, Modal, date } from "./ui";
+import type { AppData } from "@/lib/types";
 export function LearningView() {
   const { data, manage, mutate, run } = useApp();
   const [modal, setModal] = useState<"document" | "path" | null>(null);
   const [articleIds, setArticleIds] = useState<string[]>([]);
+  const [editing, setEditing] = useState<
+    AppData["learningPaths"][number] | null
+  >(null);
+  const changedSteps =
+    !!editing &&
+    JSON.stringify(editing.article_ids) !== JSON.stringify(articleIds);
   return (
     <>
       <div className="page-heading">
@@ -19,12 +26,19 @@ export function LearningView() {
         </div>
         {manage && (
           <div className="page-actions">
-            <Button variant="secondary" onClick={() => setModal("document")}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setEditing(null);
+                setModal("document");
+              }}
+            >
               Dokument hochladen
             </Button>
             <Button
               onClick={() => {
                 setArticleIds([]);
+                setEditing(null);
                 setModal("path");
               }}
             >
@@ -44,6 +58,19 @@ export function LearningView() {
         {data.learningPaths.map((p) => (
           <article key={p.id} className="learning-path">
             <h3>{p.title}</h3>
+            {manage && (
+              <Button
+                variant="secondary small"
+                aria-label={`Lernpfad bearbeiten: ${p.title}`}
+                onClick={() => {
+                  setEditing(p);
+                  setArticleIds([...p.article_ids]);
+                  setModal("path");
+                }}
+              >
+                Bearbeiten
+              </Button>
+            )}
             <p>{p.description}</p>
             <p>
               {p.completedIds.length} von {p.article_ids.length} Schritten
@@ -137,7 +164,11 @@ export function LearningView() {
       {modal && (
         <Modal
           title={
-            modal === "document" ? "Dokument hochladen" : "Lernpfad erstellen"
+            modal === "document"
+              ? "Dokument hochladen"
+              : editing
+                ? "Lernpfad bearbeiten"
+                : "Lernpfad erstellen"
           }
           onClose={() => setModal(null)}
         >
@@ -165,15 +196,23 @@ export function LearningView() {
                 });
               } else
                 await mutate("learning", {
+                  id: editing?.id,
                   title: fd.get("title"),
                   description: fd.get("description"),
                   articleIds,
+                  confirmProgressReset: fd.get("confirmProgressReset") === "on",
                 });
               setModal(null);
             }}
           >
             <Field label="Titel">
-              <input name="title" required minLength={2} maxLength={120} />
+              <input
+                name="title"
+                required
+                minLength={2}
+                maxLength={120}
+                defaultValue={editing?.title || ""}
+              />
             </Field>
             {modal === "document" ? (
               <>
@@ -206,7 +245,11 @@ export function LearningView() {
             ) : (
               <>
                 <Field label="Beschreibung">
-                  <textarea name="description" maxLength={1000} />
+                  <textarea
+                    name="description"
+                    maxLength={1000}
+                    defaultValue={editing?.description || ""}
+                  />
                 </Field>
                 <Field label="Artikel hinzufügen">
                   <select
@@ -238,6 +281,40 @@ export function LearningView() {
                       </span>
                       <Button
                         variant="secondary small"
+                        disabled={index === 0}
+                        aria-label={`Artikel ${index + 1} nach oben`}
+                        onClick={() =>
+                          setArticleIds((current) => {
+                            const next = [...current];
+                            [next[index - 1], next[index]] = [
+                              next[index],
+                              next[index - 1],
+                            ];
+                            return next;
+                          })
+                        }
+                      >
+                        ↑
+                      </Button>
+                      <Button
+                        variant="secondary small"
+                        disabled={index === articleIds.length - 1}
+                        aria-label={`Artikel ${index + 1} nach unten`}
+                        onClick={() =>
+                          setArticleIds((current) => {
+                            const next = [...current];
+                            [next[index + 1], next[index]] = [
+                              next[index],
+                              next[index + 1],
+                            ];
+                            return next;
+                          })
+                        }
+                      >
+                        ↓
+                      </Button>
+                      <Button
+                        variant="secondary small"
                         onClick={() =>
                           setArticleIds(articleIds.filter((a) => a !== id))
                         }
@@ -247,6 +324,18 @@ export function LearningView() {
                     </li>
                   ))}
                 </ol>
+                {changedSteps && (
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="confirmProgressReset"
+                      required
+                    />
+                    Ich bestätige: Lernfortschritte werden ab dem ersten
+                    geänderten Schritt zurückgesetzt. Unveränderte vorherige
+                    Schritte bleiben erhalten.
+                  </label>
+                )}
                 <p>
                   Die Reihenfolge entspricht der Auswahl. Ein Lernpfad ist nur
                   für Personen sichtbar, die alle enthaltenen Artikel lesen

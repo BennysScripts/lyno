@@ -1,9 +1,16 @@
+import path from "node:path";
+const mailboxDirectory = path.join(
+  process.env.LYNO_DATA_DIR || ".local",
+  "mail",
+);
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readdir, readFile, mkdir } from "node:fs/promises";
 async function verifyToken(email: string) {
-  for (const f of (await readdir(".local/mail")).sort().reverse()) {
-    const mail = JSON.parse(await readFile(`.local/mail/${f}`, "utf8"));
+  for (const f of (await readdir(mailboxDirectory)).sort().reverse()) {
+    const mail = JSON.parse(
+      await readFile(path.join(mailboxDirectory, f), "utf8"),
+    );
     if (mail.to === email && mail.subject.includes("E-Mail-Adresse bestätigen"))
       return new URL(mail.text).searchParams.get("token")!;
   }
@@ -360,8 +367,10 @@ test("Vorlageneditor und Rollen: Formular, Bedingungen, Einladung und verbotene 
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   let invitation = "";
-  for (const f of (await readdir(".local/mail")).sort().reverse()) {
-    const m = JSON.parse(await readFile(`.local/mail/${f}`, "utf8"));
+  for (const f of (await readdir(mailboxDirectory)).sort().reverse()) {
+    const m = JSON.parse(
+      await readFile(path.join(mailboxDirectory, f), "utf8"),
+    );
     if (m.to === recipient && m.subject.includes("Einladung")) {
       invitation = new URL(m.text).searchParams.get("token")!;
       break;
@@ -426,6 +435,30 @@ test("Vorlageneditor und Rollen: Formular, Bedingungen, Einladung und verbotene 
       ).status(),
     ).toBe(403);
     expect((await member.request.get("/api/export")).status()).toBe(403);
+    const memberPage = await member.newPage();
+    await memberPage.goto("http://localhost:3000/app/academy?tab=checklist");
+    const checkpoint = memberPage.getByRole("checkbox", {
+      name: "Arbeitsraum kennenlernen als erledigt markieren",
+    });
+    await expect(checkpoint).toBeEnabled();
+    await checkpoint.check();
+    await expect(
+      memberPage.getByRole("checkbox", {
+        name: "Arbeitsraum kennenlernen als offen markieren",
+      }),
+    ).toBeChecked();
+    await memberPage.reload();
+    await expect(
+      memberPage.getByRole("checkbox", {
+        name: "Arbeitsraum kennenlernen als offen markieren",
+      }),
+    ).toBeChecked();
+    const ownerProgress = await (await page.request.get("/api/state")).json();
+    expect(
+      ownerProgress.checklist.find(
+        (item: { title: string }) => item.title === "Arbeitsraum kennenlernen",
+      ).completed_at,
+    ).toBeNull();
   } finally {
     await member.close();
   }

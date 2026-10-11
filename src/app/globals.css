@@ -2329,7 +2329,7 @@ td .badge {
 .progress-mini i {
   display: block;
   height: 100%;
-  background: #9dba76;
+  background: var(--accent);
 }
 .progress-label {
   font-size: 9px;
@@ -2955,7 +2955,7 @@ td .badge {
 .bottleneck-bar i {
   height: 100%;
   display: block;
-  background: #b6cb93;
+  background: var(--accent);
   border-radius: 4px;
 }
 .settings-grid {

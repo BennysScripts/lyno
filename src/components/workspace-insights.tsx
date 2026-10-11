@@ -7,6 +7,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -315,12 +316,6 @@ export function InsightsView() {
                 data={value.weekly}
                 margin={{ top: 8, right: 10, left: -24, bottom: 5 }}
               >
-                <defs>
-                  <linearGradient id="startedFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#7497e8" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#7497e8" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid
                   vertical={false}
                   stroke="var(--line)"
@@ -360,18 +355,21 @@ export function InsightsView() {
                   type="monotone"
                   dataKey="started"
                   name="Gestartet"
-                  stroke="#9ab476"
-                  fill="url(#startedFill)"
+                  stroke="var(--accent)"
+                  fill="var(--accent)"
+                  fillOpacity={0.12}
                   strokeWidth={2}
                 />
                 <Area
                   type="monotone"
                   dataKey="completed"
                   name="Davon abgeschlossen"
-                  stroke="#3f7656"
+                  stroke="var(--muted)"
+                  strokeDasharray="5 3"
                   fill="transparent"
                   strokeWidth={2}
                 />
+                <Legend iconType="plainline" wrapperStyle={{ fontSize: 11 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

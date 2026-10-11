@@ -51,7 +51,7 @@ PostgreSQL **17**, Datenbank **lyno**, Port **5432**. Compose erstellt den admin
 
 Die `PRICE_*_EUR`-Werte in `.env.example` steuern die Testpreise für CORE, Zusatzmodule und Bundles. Feature-Limits stehen zentral in `src/lib/catalog.ts`. Rabattregeln werden in PostgreSQL gespeichert; `npm.cmd run campaign -- show` zeigt die Konfiguration. Details: [Abrechnung und Betrieb](OPERATIONS.md).
 
-Falls Sie PostgreSQL selbst installieren: Datenbank `lyno` und einen lokalen Migrationsbenutzer mit Berechtigung zur Rollenerstellung bereitstellen, `MIGRATION_DATABASE_URL` anpassen; `DATABASE_URL` weiterhin mit der durch die Migration angelegten eingeschränkten Rolle verwenden. Den Compose-Schritt dann auslassen.
+Falls Sie PostgreSQL selbst installieren: Datenbank `lyno` und einen lokalen Migrationsbenutzer mit Berechtigung zur Rollen- und Datenbankerstellung bereitstellen, `MIGRATION_DATABASE_URL` anpassen; `DATABASE_URL` weiterhin mit der durch die Migration angelegten eingeschränkten Rolle verwenden. Den Compose-Schritt dann auslassen.
 
 ## Registrierung, Einladungen und Passwortreset testen
 
@@ -124,7 +124,9 @@ npm.cmd run test:e2e
 Remove-Item Env:E2E_PRODUCTION
 ```
 
-Tests benötigen die lokale migrierte und für E2E gesäte Testdatenbank. Sie erzeugen zusätzliche Testfirmen. Niemals gegen produktive Datenbanken ausführen. Prüfprotokoll: [TEST_STATUS.md](TEST_STATUS.md).
+Beide npm-Testbefehle erstellen eine eigene zufällig benannte Datenbank, migrieren sie und entfernen sie anschließend. E2E sät seine Beispieldaten automatisch. Ihre Arbeitsdaten, Rabattplätze, Anmeldelimits und das reguläre Postfach bleiben unberührt. Die lokale Anwendungsrolle muss durch die Erstinstallation vorhanden sein; `MIGRATION_DATABASE_URL` braucht `CREATEDB`. Die Compose-Konfiguration erfüllt diese Voraussetzungen. Tests akzeptieren nur lokale Datenbank-Hosts und deaktivieren externe Anbieterzugriffe. Für Diagnose kann `LYNO_KEEP_TEST_DATABASE=true` die neu erstellte Testdatenbank und ihr separates Postfach erhalten. Vitest/Playwright über die npm-Befehle starten; kein Test übernimmt einen bereits laufenden Webserver.
+
+Keine produktiven Zugangsdaten verwenden. Prüfprotokoll: [TEST_STATUS.md](TEST_STATUS.md).
 
 ## Häufige Startprobleme
 

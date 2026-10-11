@@ -435,6 +435,85 @@ describe("Wissen, Dokumente und Lernpfade", () => {
       ),
     ).rejects.toMatchObject({ status: 404 });
   });
+  it("erhält Lernfortschritt bei Textkorrekturen und setzt geänderte Folgen nur bestätigt zurück", async () => {
+    const path = await tx(owner, (db) =>
+      saveLearningPath(db, owner, {
+        title: "Veränderbare Einarbeitung",
+        articleIds: [first, second],
+      }),
+    );
+    await tx(member, (db) =>
+      completeLearning(db, member, {
+        pathId: path.id,
+        articleId: first,
+        complete: true,
+      }),
+    );
+    await tx(member, (db) =>
+      completeLearning(db, member, {
+        pathId: path.id,
+        articleId: second,
+        complete: true,
+      }),
+    );
+    await tx(owner, (db) =>
+      saveLearningPath(db, owner, {
+        id: path.id,
+        title: "Besserer Titel",
+        articleIds: [first, second],
+      }),
+    );
+    expect(
+      (await tx(member, (db) => learningPaths(db, member))).find(
+        (p) => p.id === path.id,
+      )?.completedIds,
+    ).toHaveLength(2);
+    await expect(
+      tx(owner, (db) =>
+        saveLearningPath(db, owner, {
+          id: path.id,
+          title: "Geänderte Folge",
+          articleIds: [second, first],
+        }),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      tx(other, (db) =>
+        saveLearningPath(db, other, {
+          id: path.id,
+          title: "Fremder Zugriff",
+          articleIds: [first],
+          confirmProgressReset: true,
+        }),
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+    await tx(owner, (db) =>
+      saveLearningPath(db, owner, {
+        id: path.id,
+        title: "Gekürzte Folge",
+        articleIds: [first],
+        confirmProgressReset: true,
+      }),
+    );
+    expect(
+      (await tx(member, (db) => learningPaths(db, member))).find(
+        (p) => p.id === path.id,
+      )?.completedIds,
+    ).toEqual([first]);
+    await tx(owner, (db) =>
+      saveLearningPath(db, owner, {
+        id: path.id,
+        title: "Andere Folge",
+        articleIds: [second, first],
+        confirmProgressReset: true,
+      }),
+    );
+    expect(
+      (await tx(member, (db) => learningPaths(db, member))).find(
+        (p) => p.id === path.id,
+      )?.completedIds,
+    ).toHaveLength(0);
+  });
 });
 describe("Transaktionssicherer Startrabatt", () => {
   it("überbucht auch bei mehr parallelen Checkout-Reservierungen als freien Plätzen nicht", async () => {

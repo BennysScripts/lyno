@@ -54,6 +54,10 @@ import {
 } from "@/lib/core";
 import { assist } from "@/lib/assist";
 import { subscription, stripeWebhook } from "@/lib/billing";
+import {
+  processBillingOperation,
+  reconcileStripeTenant,
+} from "@/lib/billing-operations";
 import { insights } from "@/lib/insights";
 import { joinWaitlist, confirmWaitlist, contact } from "@/lib/public";
 import { sendMail } from "@/lib/mail";
@@ -361,7 +365,7 @@ async function handle(
         if (path === "roles/assign") return assignRole(db, ctx, body);
         if (path === "documents") return uploadDocument(db, ctx, body);
         if (path === "learning") return saveLearningPath(db, ctx, body);
-        if (path === "learning/complete" || path === "checklist/toggle")
+        if (path === "learning/complete")
           return completeLearning(db, ctx, body);
         if (path === "templates") return saveTemplate(db, ctx, body);
         if (path === "workflows") return startWorkflow(db, ctx, body);
@@ -546,6 +550,36 @@ async function handle(
       throw new AppError(404, "Diese Funktion wurde nicht gefunden.");
     }, ctx.tenantId);
     if (result instanceof NextResponse) return result;
+    if (
+      path === "billing" &&
+      method === "POST" &&
+      result &&
+      "billingOperationId" in result
+    )
+      return NextResponse.json(
+        await processBillingOperation(
+          ctx.tenantId,
+          uuid.parse(result.billingOperationId),
+          true,
+        ),
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    if (
+      path === "billing" &&
+      method === "POST" &&
+      result &&
+      "billingReconcile" in result
+    ) {
+      const checked = await reconcileStripeTenant(ctx.tenantId);
+      return NextResponse.json(
+        {
+          message: checked.checked
+            ? "Zahlungsstatus mit Stripe-Testkonto abgeglichen."
+            : "Abgleich momentan nicht möglich. Ihr bisheriger Status bleibt erhalten.",
+        },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
     const response = NextResponse.json(result, {
       headers: { "Cache-Control": "no-store" },
     });

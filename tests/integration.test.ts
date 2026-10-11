@@ -1,3 +1,8 @@
+import path from "node:path";
+const mailboxDirectory = path.join(
+  process.env.LYNO_DATA_DIR || ".local",
+  "mail",
+);
 import { afterAll, beforeAll, describe, it, expect } from "vitest";
 import { Pool } from "pg";
 import { readdir, readFile } from "node:fs/promises";
@@ -50,9 +55,11 @@ async function makeUser(label: string) {
   return { ctx: await getContext(r.session), session: r.session };
 }
 async function mailbox(email: string, subject: string) {
-  const files = (await readdir(".local/mail")).sort().reverse();
+  const files = (await readdir(mailboxDirectory)).sort().reverse();
   for (const f of files) {
-    const m = JSON.parse(await readFile(`.local/mail/${f}`, "utf8"));
+    const m = JSON.parse(
+      await readFile(path.join(mailboxDirectory, f), "utf8"),
+    );
     if (m.to === email && m.subject.includes(subject)) return m;
   }
   throw new Error("Keine Testnachricht gefunden");
@@ -97,6 +104,72 @@ afterAll(async () => {
   await pool.end();
 });
 describe("CORE und PostgreSQL-Mandantentrennung", () => {
+  it("bearbeitet Teams per ID und schützt Mitglieder vor gleichnamigen Neuanlagen", async () => {
+    const team = await transaction(
+      (db) =>
+        teamAction(db, owner, {
+          name: "Projektteam",
+          userIds: [member.userId],
+        }),
+      owner.tenantId,
+    );
+    const article = await transaction(
+      (db) =>
+        saveArticle(db, owner, {
+          title: "Projektteam Handbuch",
+          body: "Teamgebundenes Wissen bleibt nach dem Umbenennen zugänglich.",
+          visibility: "team",
+          teamId: team.id,
+        }),
+      owner.tenantId,
+    );
+    await expect(
+      transaction(
+        (db) => teamAction(db, owner, { name: "Projektteam", userIds: [] }),
+        owner.tenantId,
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(
+      await transaction(
+        (db) =>
+          rows(db, "SELECT user_id FROM team_members WHERE team_id=$1", [
+            team.id,
+          ]),
+        owner.tenantId,
+      ),
+    ).toEqual([{ user_id: member.userId }]);
+    for (const ctx of [other, member])
+      await expect(
+        transaction(
+          (db) =>
+            teamAction(db, ctx, {
+              id: team.id,
+              name: "Unzulässig",
+              userIds: [],
+            }),
+          ctx.tenantId,
+        ),
+      ).rejects.toMatchObject({ status: ctx === other ? 404 : 403 });
+    const renamed = await transaction(
+      (db) =>
+        teamAction(db, owner, {
+          id: team.id,
+          name: "Delivery",
+          userIds: [member.userId],
+        }),
+      owner.tenantId,
+    );
+    expect(renamed.id).toBe(team.id);
+    expect(renamed.name).toBe("Delivery");
+    expect(
+      (
+        await transaction(
+          (db) => readableArticles(db, member, "Projektteam Handbuch"),
+          member.tenantId,
+        )
+      ).map((a) => a.id),
+    ).toEqual([article.id]);
+  });
   it("speichert Passwort- und Sessionhashes, authentifiziert und prüft Rollen aktuell", async () => {
     const [u] = await query("SELECT password_hash FROM users WHERE id=$1", [
       owner.userId,
@@ -845,6 +918,51 @@ describe("Mitarbeiter- und Paketgrenzen", () => {
 });
 
 describe("Vollständige Löschung einer eigenen Testidentität", () => {
+  it("verhindert verwaiste Stripe-Abos und offene Zahlungsaufträge bei Firmenlöschung", async () => {
+    const { ctx } = await makeUser("billing-deletion");
+    const input = { password, confirmation: `Test billing-deletion ${suffix}` };
+    await adminPool.query(
+      "UPDATE organizations SET stripe_subscription_id='sub_deletion_fixture',subscription_status='active' WHERE id=$1",
+      [ctx.tenantId],
+    );
+    await expect(
+      transaction((db) => deleteCompany(db, ctx, input), ctx.tenantId),
+    ).rejects.toMatchObject({ status: 409 });
+    await adminPool.query(
+      "UPDATE organizations SET subscription_status='canceled' WHERE id=$1",
+      [ctx.tenantId],
+    );
+    const op = (
+      await adminPool.query(
+        "INSERT INTO billing_operations(tenant_id,requested_by,action,payload) VALUES($1,$2,'cancel','{}') RETURNING id",
+        [ctx.tenantId, ctx.userId],
+      )
+    ).rows[0];
+    await expect(
+      transaction((db) => deleteCompany(db, ctx, input), ctx.tenantId),
+    ).rejects.toMatchObject({ status: 409 });
+    await adminPool.query(
+      "UPDATE billing_operations SET status='succeeded' WHERE id=$1",
+      [op.id],
+    );
+    const order = (
+      await adminPool.query(
+        "INSERT INTO checkout_orders(tenant_id,plan,modules,amount_cents,provider,customer_key) VALUES($1,'starter','{}',4900,'stripe_test',$2) RETURNING id",
+        [ctx.tenantId, customerKey(ctx)],
+      )
+    ).rows[0];
+    await expect(
+      transaction((db) => deleteCompany(db, ctx, input), ctx.tenantId),
+    ).rejects.toMatchObject({ status: 409 });
+    await adminPool.query(
+      "UPDATE checkout_orders SET status='expired' WHERE id=$1",
+      [order.id],
+    );
+    await transaction((db) => deleteCompany(db, ctx, input), ctx.tenantId);
+    expect(
+      await query("SELECT id FROM organizations WHERE id=$1", [ctx.tenantId]),
+    ).toHaveLength(0);
+  });
   it("entfernt nach ausdrücklichem Opt-in auch das letzte persönliche Konto", async () => {
     const { ctx } = await makeUser("deletion");
     await transaction(

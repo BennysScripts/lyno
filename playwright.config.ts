@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 import { existsSync } from "node:fs";
+if (process.env.LYNO_ISOLATED_TEST !== "1")
+  throw new Error(
+    "Bitte npm run test:e2e verwenden: Browsertests erhalten eine eigene Datenbank und einen eigenen Webserver.",
+  );
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -44,7 +48,7 @@ export default defineConfig({
   webServer: {
     command: process.env.E2E_PRODUCTION ? "npm start" : "npm run dev",
     url: "http://localhost:3000/api/health",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 60000,
   },
 });

@@ -7,7 +7,6 @@ import {
   appUrl,
   requireRole,
   uuid,
-  hash,
   type Context,
 } from "./security";
 import { catalog, quote, selectionSchema } from "./catalog";
@@ -15,7 +14,7 @@ import { CAMPAIGN_LOCK, customerKey, reserveDiscount } from "./discount";
 export function plans() {
   return catalog().plans;
 }
-function stripe() {
+export function stripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   if (!key.startsWith("sk_test_"))
@@ -36,7 +35,7 @@ async function validateLimits(db: DB, tenantId: string, selection: unknown) {
     );
   return q;
 }
-async function settle(
+export async function settle(
   db: DB,
   orderId: string,
   eventKey: string,
@@ -128,10 +127,13 @@ export async function subscription(db: DB, ctx: Context, input: unknown) {
         "resume",
         "portal",
         "abandon",
+        "retry",
+        "reconcile",
       ]),
       plan: selectionSchema.shape.plan.optional(),
       modules: selectionSchema.shape.modules.optional(),
       orderId: uuid.optional(),
+      operationId: uuid.optional(),
     })
     .parse(input);
   const [org] = await rows(
@@ -140,6 +142,45 @@ export async function subscription(db: DB, ctx: Context, input: unknown) {
     [ctx.tenantId],
   );
   const api = stripe();
+  if (d.action === "reconcile") {
+    if (!api) throw new AppError(409, "Kein Stripe-Testkonto eingerichtet.");
+    return { billingReconcile: true, message: "Zahlungsstatus wird geprüft." };
+  }
+  if (d.action === "retry") {
+    const [op] = await rows(
+      db,
+      "SELECT id FROM billing_operations WHERE tenant_id=$1 AND id=$2",
+      [ctx.tenantId, d.operationId || null],
+    );
+    if (!op) throw new AppError(404, "Abrechnungsauftrag nicht gefunden.");
+    return {
+      billingOperationId: op.id as string,
+      message: "Abrechnungsauftrag wird erneut geprüft.",
+    };
+  }
+  const queue = async (action: string, payload: object) => {
+    const [active] = await rows(
+      db,
+      "SELECT id FROM billing_operations WHERE tenant_id=$1 AND status<>'succeeded'",
+      [ctx.tenantId],
+    );
+    if (active)
+      throw new AppError(
+        409,
+        "Ein Abrechnungsauftrag ist noch offen. Prüfen Sie zuerst dessen Status.",
+      );
+    const [op] = await rows(
+      db,
+      "INSERT INTO billing_operations(tenant_id,requested_by,action,payload) VALUES($1,$2,$3,$4) RETURNING id",
+      [ctx.tenantId, ctx.userId, action, JSON.stringify(payload)],
+    );
+    await audit(db, ctx, `billing.${action}_queued`, op.id);
+    return {
+      billingOperationId: op.id as string,
+      message:
+        "Abrechnungsauftrag gespeichert. Die Verarbeitung kann sicher wiederholt werden.",
+    };
+  };
   if (d.action === "portal") {
     if (!api || !org.stripe_customer_id)
       throw new AppError(
@@ -188,10 +229,11 @@ export async function subscription(db: DB, ctx: Context, input: unknown) {
       };
     }
     if (order.status === "pending") {
-      if (api && order.stripe_session_id)
-        await api.checkout.sessions.expire(order.stripe_session_id);
-      if (api && order.stripe_invoice_id)
-        await api.invoices.voidInvoice(order.stripe_invoice_id);
+      if (order.provider === "stripe_test") {
+        if (!api)
+          throw new AppError(503, "Stripe-Testzugang zur Prüfung benötigt.");
+        return queue("abandon", { orderId: order.id });
+      }
       await db.query(
         "UPDATE checkout_orders SET status='canceled' WHERE id=$1",
         [order.id],
@@ -239,7 +281,9 @@ export async function subscription(db: DB, ctx: Context, input: unknown) {
     if (
       org.discount_percent > 0 &&
       org.discount_ends_at &&
-      new Date(org.discount_ends_at) > new Date()
+      new Date(org.discount_ends_at) > new Date() &&
+      (!api ||
+        (org.stripe_subscription_id && org.subscription_status !== "canceled"))
     )
       await db.query(
         "UPDATE checkout_orders SET discount_percent=$2 WHERE id=$1",
@@ -247,93 +291,28 @@ export async function subscription(db: DB, ctx: Context, input: unknown) {
       );
     const discount = await reserveDiscount(db, ctx, order.id, order.provider);
     if (api) {
-      const product = await api.products.create(
-        {
-          name: `LYNO ${q.limits.name} · CORE${q.modules.length ? " + " + q.modules.join(", ").toUpperCase() : ""}`,
-          metadata: { selection: hash(JSON.stringify(q.modules)) },
-        },
-        { idempotencyKey: `lyno-product-${order.id}` },
-      );
-      const price = await api.prices.create(
-        {
-          product: product.id,
-          currency: "eur",
-          unit_amount: q.amountCents,
-          recurring: { interval: "month" },
-        },
-        { idempotencyKey: `lyno-price-${order.id}` },
-      );
+      const checkoutExpiresAt = Math.floor(Date.now() / 1000) + 23 * 3600;
       await db.query(
-        "UPDATE checkout_orders SET stripe_price_id=$2 WHERE id=$1",
-        [order.id, price.id],
-      );
-      const coupon = discount
-        ? await api.coupons.create(
-            {
-              percent_off: discount.percent,
-              duration: "repeating",
-              duration_in_months: discount.months,
-              name: `LYNO Start: ${discount.percent}% für ${discount.months} Monate`,
-            },
-            { idempotencyKey: `lyno-coupon-${order.id}` },
-          )
-        : null;
-      if (
-        org.stripe_subscription_id &&
-        org.subscription_status !== "canceled"
-      ) {
-        const previous = await api.subscriptions.retrieve(
-          org.stripe_subscription_id,
-        );
-        const updated = await api.subscriptions.update(
-          previous.id,
-          {
-            items: [{ id: previous.items.data[0].id, price: price.id }],
-            payment_behavior: "pending_if_incomplete",
-            proration_behavior: "always_invoice",
-            expand: ["latest_invoice"],
-          },
-          { idempotencyKey: `lyno-change-${order.id}` },
-        );
-        const invoice = updated.latest_invoice as Stripe.Invoice;
-        await db.query(
-          "UPDATE checkout_orders SET stripe_subscription_id=$2,stripe_invoice_id=$3,checkout_url=$4 WHERE id=$1",
-          [order.id, previous.id, invoice.id, invoice.hosted_invoice_url],
-        );
-        return {
-          orderId: order.id,
-          url: invoice.hosted_invoice_url,
-          message:
-            "Tarifwechsel bei Stripe im Testmodus vorbereitet. Freischaltung erfolgt nach bestätigter Rechnung; Stripe verrechnet die Restlaufzeit.",
-        };
-      }
-      const session = await api.checkout.sessions.create(
-        {
-          mode: "subscription",
-          customer: org.stripe_customer_id || undefined,
-          customer_email: org.stripe_customer_id ? undefined : ctx.email,
-          line_items: [{ price: price.id, quantity: 1 }],
-          discounts: coupon ? [{ coupon: coupon.id }] : undefined,
-          metadata: { tenantId: ctx.tenantId, orderId: order.id },
-          subscription_data: {
-            metadata: { tenantId: ctx.tenantId, orderId: order.id },
-          },
-          client_reference_id: ctx.tenantId,
-          expires_at: Math.floor(Date.now() / 1000) + 1800,
-          success_url: `${appUrl()}/app/settings?checkout=success`,
-          cancel_url: `${appUrl()}/app/settings?checkout=canceled`,
-        },
-        { idempotencyKey: `lyno-checkout-${order.id}` },
-      );
-      await db.query(
-        "UPDATE checkout_orders SET stripe_session_id=$2,checkout_url=$3 WHERE id=$1",
-        [order.id, session.id, session.url],
+        "UPDATE checkout_orders SET expires_at=to_timestamp($2) WHERE id=$1",
+        [order.id, checkoutExpiresAt],
       );
       return {
-        orderId: order.id,
-        url: session.url,
-        message:
-          "Stripe-Testcheckout bereit. Rechte werden nach Zahlungsbestätigung aktiviert.",
+        ...(await queue("subscribe", {
+          orderId: order.id,
+          productName: `LYNO ${q.limits.name} · CORE${q.modules.length ? " + " + q.modules.join(", ").toUpperCase() : ""}`,
+          customerId: org.stripe_customer_id || null,
+          customerEmail: ctx.email,
+          subscriptionId:
+            org.stripe_subscription_id && org.subscription_status !== "canceled"
+              ? org.stripe_subscription_id
+              : null,
+          discountPercent: discount?.percent || 0,
+          discountMonths: discount?.months || 0,
+          checkoutExpiresAt,
+          successUrl: `${appUrl()}/app/settings?checkout=success`,
+          cancelUrl: `${appUrl()}/app/settings?checkout=canceled`,
+        })),
+        orderId: order.id as string,
       };
     }
     await audit(db, ctx, "billing.test_checkout_created", order.id, {
@@ -348,10 +327,11 @@ export async function subscription(db: DB, ctx: Context, input: unknown) {
   }
   if (!["active", "trialing"].includes(org.subscription_status))
     throw new AppError(409, "Es gibt kein aktives Abo.");
-  if (api && org.stripe_subscription_id)
-    await api.subscriptions.update(org.stripe_subscription_id, {
-      cancel_at_period_end: d.action === "cancel",
-    });
+  if (org.stripe_subscription_id) {
+    if (!api)
+      throw new AppError(503, "Stripe-Testzugang zur Änderung benötigt.");
+    return queue(d.action, { subscriptionId: org.stripe_subscription_id });
+  }
   await db.query(
     "UPDATE organizations SET cancel_at_period_end=$2 WHERE id=$1",
     [ctx.tenantId, d.action === "cancel"],
@@ -436,6 +416,9 @@ export async function stripeWebhook(body: string, signature: string) {
           400,
           "Checkout passt nicht zur gespeicherten Bestellung.",
         );
+      // A delayed second event for an old paid checkout must not replace the
+      // company's current subscription after a later cancellation/restart.
+      if (order.status === "paid") return { received: true };
       if (event.type === "checkout.session.expired") {
         if (order.status === "pending") {
           await db.query(

@@ -15,7 +15,8 @@ export function BillingView() {
   const { data, refresh, toast, run } = useApp();
   const [plan, setPlan] = useState(data.organization.plan),
     [modules, setModules] = useState<string[]>(data.organization.modules),
-    [review, setReview] = useState(false);
+    [review, setReview] = useState(false),
+    [checking, setChecking] = useState(false);
   const p = data.catalog.plans.find((p) => p.id === plan)!;
   const separate =
     p.corePrice +
@@ -38,6 +39,19 @@ export function BillingView() {
     await refresh();
     toast(result.message);
     if (result.url) window.location.assign(result.url);
+  }
+  async function check(input: unknown) {
+    setChecking(true);
+    try {
+      await action(input);
+    } catch (error) {
+      toast(
+        error instanceof Error ? error.message : "Abgleich fehlgeschlagen.",
+        true,
+      );
+    } finally {
+      setChecking(false);
+    }
   }
   return (
     <>
@@ -89,6 +103,50 @@ export function BillingView() {
           </strong>
         </div>
       </div>
+      {owner && data.billingProvider === "stripe-test" && (
+        <div className="mb">
+          <Button
+            variant="secondary"
+            disabled={checking}
+            onClick={() => check({ action: "reconcile" })}
+          >
+            Zahlungsstatus prüfen
+          </Button>
+        </div>
+      )}
+      {data.billingOperations.map((operation) => (
+        <section
+          className="panel panel-pad mb"
+          key={operation.id}
+          aria-label="Offener Abrechnungsauftrag"
+        >
+          <h2>
+            {operation.status === "attention"
+              ? "Abrechnung benötigt eine Prüfung"
+              : "Ihre Änderung wird verarbeitet"}
+          </h2>
+          <p>
+            Ihr Auftrag ist gespeichert. Ihre bisherigen Modulrechte gelten, bis
+            die Änderung bestätigt wurde.
+          </p>
+          <p>
+            {operation.last_error_code === "retry_window_expired"
+              ? "Die automatische Wiederholung wurde beendet, um eine doppelte Bestellung zu vermeiden. Der Betreiber muss den Vorgang im Stripe-Testkonto abgleichen."
+              : "Bei einer vorübergehenden Störung versucht der Hintergrunddienst die Verarbeitung erneut. Sie können den gespeicherten Auftrag auch jetzt prüfen."}
+          </p>
+          {operation.last_error_code !== "retry_window_expired" && (
+            <Button
+              variant="secondary"
+              disabled={checking}
+              onClick={() =>
+                check({ action: "retry", operationId: operation.id })
+              }
+            >
+              Verarbeitung erneut prüfen
+            </Button>
+          )}
+        </section>
+      ))}
       {open && (
         <section className="panel panel-pad mb">
           <Badge>
